@@ -11,18 +11,81 @@
 #   Since this is a learning exercise, we're going to be more verbose with
 #   our comments than normal.
 #
+#   Rules:
+#   https://www.hasbro.com/common/instruct/battleship.pdf
+#
 #############################################################################
 import argparse
 import sys
+import random
 
 
 # Number of rows and columns in a board.
 NUM_ROWS = 10
 NUM_COLS = 10
 
-# Save which player we are.
+# Player designations
 PLAYER1 = "Player 1"
 PLAYER2 = "Player 2"
+
+# Ship types
+CARRIER =    {'length': 5, 'symbol': "C"}
+BATTLESHIP = {'length': 4, 'symbol': "B"}
+CRUISER =    {'length': 3, 'symbol': "r"}
+SUBMARINE =  {'length': 3, 'symbol': "S"}
+DESTROYER =  {'length': 2, 'symbol': "D"}
+
+
+
+def place_ship(b, ship):
+    """ Place all 5 ships on a board randomly. """
+
+    def _place_ship_horizontal(b, ship):
+        """ Handle ships that lie horizontally """
+        range_end = NUM_COLS - ship['length']
+        start_col = random.randint(0, range_end)
+        row = random.randint(0, NUM_ROWS - 1)
+        for col in range(start_col, start_col + ship['length']):
+            if b[row][col] != " ":
+                return False
+        for col in range(start_col, start_col + ship['length']):
+            b[row][col] = ship["symbol"]
+        return True
+
+
+    def _place_ship_vertical(b, ship):
+        """ Handle ships that lie vertically """
+        range_end = NUM_ROWS - ship['length']
+        start_row = random.randint(0, range_end)
+        col = random.randint(0, NUM_COLS - 1)
+        for row in range(start_row, start_row + ship['length']):
+            if b[row][col] != " ":
+                return False
+        for row in range(start_row, start_row + ship['length']):
+            b[row][col] = ship["symbol"]
+        return True
+
+
+    success = False
+
+    while not success:
+        is_horizontal = random.randint(0,1)
+        
+        if is_horizontal:
+            success = _place_ship_horizontal(b, ship)
+        else:
+            success = _place_ship_vertical(b, ship)
+
+
+def place_all_ships(b):
+    """ Place all the ships we have. """
+    place_ship(b, CARRIER);
+    place_ship(b, BATTLESHIP);
+    place_ship(b, CRUISER);
+    place_ship(b, SUBMARINE);
+    place_ship(b, DESTROYER);
+
+
 player = "unknown"
 
 
@@ -156,6 +219,12 @@ parser.add_argument("--letters-on-top",
 args = parser.parse_args()
 
 check_args()
+
+print(player)
+print("")
+print_board(board)
+
+place_all_ships(board)
 
 print(player)
 print("")
