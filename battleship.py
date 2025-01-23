@@ -14,6 +14,10 @@
 #   Rules:
 #   https://www.hasbro.com/common/instruct/battleship.pdf
 #
+#   TODO:
+#   - Break into Modules
+#   - logging for debug - https://docs.python.org/3/howto/logging.html#logging-basic-tutorial
+#
 #############################################################################
 import argparse
 import sys
@@ -35,6 +39,23 @@ CRUISER =    {'length': 3, 'symbol': "r"}
 SUBMARINE =  {'length': 3, 'symbol': "S"}
 DESTROYER =  {'length': 2, 'symbol': "D"}
 
+# Marks for misses and hits.
+MISS = "."
+HIT = "X"
+
+
+def get_ship_name(ship_id):
+    if ship_id == "C":
+        return "Carrier"
+    if ship_id == "B":
+        return "Battleship"
+    if ship_id == "r":
+        return "Cruiser"
+    if ship_id == "S":
+        return "Submarine"
+    if ship_id == "D":
+        return "Destroyer"
+    return "UNKNOWN SHIP!"
 
 
 def place_ship(b, ship):
@@ -70,11 +91,47 @@ def place_ship(b, ship):
 
     while not success:
         is_horizontal = random.randint(0,1)
-        
+
         if is_horizontal:
             success = _place_ship_horizontal(b, ship)
         else:
             success = _place_ship_vertical(b, ship)
+
+
+def is_sunk(b, ship):
+    for row in range(0,NUM_ROWS):
+        for col in range(0, NUM_COLS):
+            if b[row][col] == ship:
+                return False
+    return True
+
+
+def process_defense(b, c1, c2):
+    """ Handle getting coordinates from our opponents."""
+    # Translate from UI coordinates to internal coordinates.
+    row = ord(c1) - ord("A")
+    col = c2 - 1
+
+    #print("DEBUG: (" + str(row) + ", " + str(col) + ")")
+
+    if b[row][col] == " ":
+        b[row][col] = MISS
+        return "MISS"
+
+    elif b[row][col] == MISS:
+        return "ERROR - DUP"
+
+    elif b[row][col] == HIT:
+        return "ERROR - DUP"
+
+    else:
+        ship = b[row][col]
+        b[row][col] = HIT
+
+        if is_sunk(b, ship):
+            return "HIT, SUNK " + get_ship_name(ship)
+        else:
+            return "HIT"
 
 
 def place_all_ships(b):
@@ -92,9 +149,9 @@ player = "unknown"
 def BuildBoard():
     """Create a board, which is a list of lists and return it."""
     b = []
-    for i in range(0,NUM_ROWS):
+    for row in range(0,NUM_ROWS):
         x = []
-        for j in range(0, NUM_COLS):
+        for col in range(0, NUM_COLS):
             x.append(" ")
         b.append(x)
     return b
@@ -226,9 +283,28 @@ print_board(board)
 
 place_all_ships(board)
 
-print(player)
-print("")
-print_board(board)
 
-# Adding a cool new feature!!! :-)
+
+while True:
+    print(player)
+    print("")
+    print_board(board)
+
+    c = input("Enter coordinates [A1]-[J10]: ")
+    c1 = c[0:1]
+    c2 = c[1:]
+    c1 = c1.upper()
+    if not 'A' <= c1 <= 'J':
+        print("Invalid coordinate")
+        continue
+    c2 = int(c2)
+    if not 1 <= c2 <= 10:
+        print("Invalid coordinate")
+        continue
+
+    print("(" + c1 + ", " + str(c2) + ")")
+
+    result = process_defense(board, c1, c2)
+    print(result)
+    input("Any key to continue...")
 
