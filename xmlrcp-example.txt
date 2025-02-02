@@ -1,0 +1,14 @@
+Sure, here is a basic example of XML-RPC client and server code in Python: Server Code:
+from xmlrpc.server import SimpleXMLRPCServer
+def add_numbers(x, y): return x + y
+
+server = SimpleXMLRPCServer(("localhost", 8000)) server.register_function(add_numbers, "add") server.serve_forever()
+
+Client Code:
+import xmlrpc.client
+proxy = xmlrpc.client.ServerProxy("
+http://localhost:8000/
+") print(proxy.add(2, 3))
+
+In this example, the server code defines a function add_numbers that adds two numbers. The server then creates an instance of SimpleXMLRPCServer, registers the add_numbers function under the name "add", and starts the server. The client code creates a proxy for the server and calls the add function on the server, passing it the arguments 2 and 3. The server adds the numbers and returns the result, which the client then prints.
+

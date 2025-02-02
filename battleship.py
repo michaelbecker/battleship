@@ -106,13 +106,36 @@ def is_sunk(b, ship):
     return True
 
 
+def get_binary_coordinates(c1, c2):
+    """ Translate from UI coordinates to internal coordinates."""
+    if not isinstance(c1, str):
+        sys.exit("get_binary_coordinates: c1 - Invalid type")
+
+    if not isinstance(c2, str):
+        sys.exit("get_binary_coordinates: c2 - Invalid type")
+
+    row = ord(c1) - ord("A")
+    col = int(c2) - 1
+    return row, col
+
+
+def get_string_coordinates(c1, c2):
+    """ Translate from internal coordinates to UI coordinates."""
+    if not isinstance(c1, int):
+        sys.exit("get_string_coordinates: c1 - Invalid type")
+
+    if not isinstance(c2, int):
+        sys.exit("get_string_coordinates: c2 - Invalid type")
+
+    row = chr(c1 + ord("A"))
+    col = str(c2 + 1)
+    return row, col
+
+
 def process_defense(b, c1, c2):
     """ Handle getting coordinates from our opponents."""
     # Translate from UI coordinates to internal coordinates.
-    row = ord(c1) - ord("A")
-    col = c2 - 1
-
-    #print("DEBUG: (" + str(row) + ", " + str(col) + ")")
+    row, col = get_binary_coordinates(c1, c2)
 
     if b[row][col] == " ":
         b[row][col] = MISS
@@ -157,8 +180,9 @@ def BuildBoard():
     return b
 
 
-# Actually "make" the board we will use.
-board = BuildBoard()
+# Actually "make" the boards we will use.
+my_board = BuildBoard()
+opponent_board = BuildBoard()
 
 
 def print_board_letters_on_top(b):
@@ -264,6 +288,33 @@ def check_args():
         print_board = print_board_letters_on_top
 
 
+def offence_guess(b):
+    row, col = offence_guess.guess[0], offence_guess.guess[1]
+
+    row = row + 1
+    if row >= NUM_ROWS:
+        row = 0
+    col = col + 1
+    if col >= NUM_COLS:
+        col = 0
+
+    offence_guess.guess = (row, col)
+    return get_string_coordinates(row, col)
+
+offence_guess.guess = (5, 5)
+
+
+def offence_result(b, result):
+    row, col = offence_guess.guess[0], offence_guess.guess[1]
+
+    if result == "MISS":
+        b[row][col] = MISS
+    else:
+        b[row][col] = HIT
+        
+
+
+
 ################################ MAIN SCRIPT ################################
 
 
@@ -279,16 +330,16 @@ check_args()
 
 print(player)
 print("")
-print_board(board)
+print_board(my_board)
 
-place_all_ships(board)
+place_all_ships(my_board)
 
 
 
 while True:
     print(player)
     print("")
-    print_board(board)
+    print_board(my_board)
 
     c = input("Enter coordinates [A1]-[J10]: ")
     c1 = c[0:1]
@@ -297,14 +348,27 @@ while True:
     if not 'A' <= c1 <= 'J':
         print("Invalid coordinate")
         continue
-    c2 = int(c2)
-    if not 1 <= c2 <= 10:
+    if not 1 <= int(c2) <= 10:
         print("Invalid coordinate")
         continue
 
     print("(" + c1 + ", " + str(c2) + ")")
 
-    result = process_defense(board, c1, c2)
+    result = process_defense(my_board, c1, c2)
     print(result)
-    input("Any key to continue...")
+
+    c1, c2 = offence_guess(opponent_board)
+
+    while True:
+        result = input(str(c1) + str(c2) + ": [HIT/MISS]? ")
+        result = result.upper()
+
+        if result == "MISS" or "HIT" in result:
+            offence_result(opponent_board, result)
+            print_board(opponent_board)
+            break
+        else:
+            print("Unknown response, please try again.")
+
+
 
