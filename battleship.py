@@ -23,7 +23,8 @@ import argparse
 import sys
 import random
 from constants import *
-from print_board import print_board
+from print_board import (print_board, set_print_board, NUMBERS_ON_TOP,
+                         LETTERS_ON_TOP)
 
 
 def get_ship_name(ship_id):
@@ -38,6 +39,40 @@ def get_ship_name(ship_id):
     if ship_id == "D":
         return "Destroyer"
     return "UNKNOWN SHIP!"
+
+
+def is_sunk(b, ship):
+    for row in range(0,NUM_ROWS):
+        for col in range(0, NUM_COLS):
+            if b[row][col] == ship:
+                return False
+    return True
+
+
+def get_binary_coordinates(c1, c2):
+    """ Translate from UI coordinates to internal coordinates."""
+    if not isinstance(c1, str):
+        sys.exit("get_binary_coordinates: c1 - Invalid type")
+
+    if not isinstance(c2, str):
+        sys.exit("get_binary_coordinates: c2 - Invalid type")
+
+    row = ord(c1) - ord("A")
+    col = int(c2) - 1
+    return row, col
+
+
+def get_string_coordinates(c1, c2):
+    """ Translate from internal coordinates to UI coordinates."""
+    if not isinstance(c1, int):
+        sys.exit("get_string_coordinates: c1 - Invalid type")
+
+    if not isinstance(c2, int):
+        sys.exit("get_string_coordinates: c2 - Invalid type")
+
+    row = chr(c1 + ord("A"))
+    col = str(c2 + 1)
+    return row, col
 
 
 def place_ship(b, ship):
@@ -80,65 +115,6 @@ def place_ship(b, ship):
             success = _place_ship_vertical(b, ship)
 
 
-def is_sunk(b, ship):
-    for row in range(0,NUM_ROWS):
-        for col in range(0, NUM_COLS):
-            if b[row][col] == ship:
-                return False
-    return True
-
-
-def get_binary_coordinates(c1, c2):
-    """ Translate from UI coordinates to internal coordinates."""
-    if not isinstance(c1, str):
-        sys.exit("get_binary_coordinates: c1 - Invalid type")
-
-    if not isinstance(c2, str):
-        sys.exit("get_binary_coordinates: c2 - Invalid type")
-
-    row = ord(c1) - ord("A")
-    col = int(c2) - 1
-    return row, col
-
-
-def get_string_coordinates(c1, c2):
-    """ Translate from internal coordinates to UI coordinates."""
-    if not isinstance(c1, int):
-        sys.exit("get_string_coordinates: c1 - Invalid type")
-
-    if not isinstance(c2, int):
-        sys.exit("get_string_coordinates: c2 - Invalid type")
-
-    row = chr(c1 + ord("A"))
-    col = str(c2 + 1)
-    return row, col
-
-
-def process_defense(b, c1, c2):
-    """ Handle getting coordinates from our opponents."""
-    # Translate from UI coordinates to internal coordinates.
-    row, col = get_binary_coordinates(c1, c2)
-
-    if b[row][col] == " ":
-        b[row][col] = MISS
-        return "MISS"
-
-    elif b[row][col] == MISS:
-        return "ERROR - DUP"
-
-    elif b[row][col] == HIT:
-        return "ERROR - DUP"
-
-    else:
-        ship = b[row][col]
-        b[row][col] = HIT
-
-        if is_sunk(b, ship):
-            return "HIT, SUNK " + get_ship_name(ship)
-        else:
-            return "HIT"
-
-
 def place_all_ships(b):
     """ Place all the ships we have. """
     place_ship(b, CARRIER);
@@ -148,10 +124,34 @@ def place_all_ships(b):
     place_ship(b, DESTROYER);
 
 
-player = "unknown"
+def process_defense(b, c1, c2):
+    """ Handle getting coordinates from our opponents."""
+    # Translate from UI coordinates to internal coordinates.
+    row, col = get_binary_coordinates(c1, c2)
+
+    if b[row][col] == " ":
+        b[row][col] = MISS
+        return "M"
+
+    elif b[row][col] == MISS:
+        print("Error - Dup request")
+        return "E"
+
+    elif b[row][col] == HIT:
+        print("Error - Dup request")
+        return "E"
+
+    else:
+        ship = b[row][col]
+        b[row][col] = HIT
+
+        if is_sunk(b, ship):
+            return ship
+        else:
+            return "H"
 
 
-def BuildBoard():
+def build_board():
     """Create a board, which is a list of lists and return it."""
     b = []
     for row in range(0,NUM_ROWS):
@@ -160,30 +160,6 @@ def BuildBoard():
             x.append(" ")
         b.append(x)
     return b
-
-
-# Actually "make" the boards we will use.
-my_board = BuildBoard()
-opponent_board = BuildBoard()
-
-
-def check_args():
-    """Verify the input to the script is ok before using it."""
-
-    # the global keyword lets us change a global var.
-    global player
-    global print_board
-
-    if args.player == "p1":
-        player = PLAYER1
-    elif args.player == "p2":
-        player = PLAYER2
-    else:
-        print("Unknown player")
-        sys.exit(-1)
-
-    if args.letters_on_top:
-        print_board = print_board_letters_on_top
 
 
 def offence_guess(b):
@@ -205,15 +181,78 @@ offence_guess.guess = (5, 5)
 def offence_result(b, result):
     row, col = offence_guess.guess[0], offence_guess.guess[1]
 
-    if result == "MISS":
+    if result == "M":
         b[row][col] = MISS
-    else:
+    elif result == "H":
         b[row][col] = HIT
+    else:
+        print("UNKNOWN RESULT!")
         
 
+def run_game_defense(coordinates):
+    c1 = coordinates[0:1]
+    c2 = coordinates[1:]
+    c1 = c1.upper()
+    if not 'A' <= c1 <= 'J':
+        print("Invalid letter coordinate")
+        return "E"
+    if not 1 <= int(c2) <= 10:
+        print("Invalid number coordinate")
+        return "E"
+
+    if args.verbose:
+        print("(" + c1 + ", " + str(c2) + ")")
+
+    result = process_defense(my_board, c1, c2)
+    return result
+
+
+def run_game_offense(coordinates):
+    result = input(str(c1) + str(c2) + ": [H/M]? ")
+    return result
 
 
 ################################ MAIN SCRIPT ################################
+
+# Actually "make" the boards we will use.
+my_board = build_board()
+opponent_board = build_board()
+player = "unknown"
+
+
+def print_my_board():
+    if args.verbose:
+        print("My Board")
+        print_board(my_board)
+
+
+def print_opponent_board():
+    if args.verbose:
+        print("Opponent Board")
+        print_board(opponent_board)            
+
+
+def check_args():
+    """Verify the input to the script is ok before using it."""
+
+    # the global keyword lets us change a global var.
+    global player
+    global print_board
+
+    args.player = args.player.upper()
+
+    if args.player == "P1":
+        player = PLAYER1
+    elif args.player == "P2":
+        player = PLAYER2
+    else:
+        print("Unknown player")
+        sys.exit(-1)
+
+    if args.letters_on_top:
+        set_print_board(LETTERS_ON_TOP)
+    else:
+        set_print_board(NUMBERS_ON_TOP)
 
 
 # Use the python library tools to get our inputs.
@@ -222,51 +261,60 @@ parser.add_argument("player")
 parser.add_argument("--letters-on-top",
                     help="Swaps labeling of rows and columns",
                     action="store_true")
+parser.add_argument("--verbose",
+                    help="Enable verbose mode",
+                    action="store_true")
 args = parser.parse_args()
 
 check_args()
 
-print(player)
+print("Computer is", player)
 print("")
-print_board(my_board)
 
 place_all_ships(my_board)
 
+class GameState:
+    GS_RUN_OFFENCE = 1
+    GS_RUN_DEFENSE = 2
+
+if player == PLAYER1:
+    game_state = GameState.GS_RUN_OFFENCE
+else:
+    game_state = GameState.GS_RUN_DEFENSE
 
 
 while True:
-    print(player)
-    print("")
-    print_board(my_board)
 
-    c = input("Enter coordinates [A1]-[J10]: ")
-    c1 = c[0:1]
-    c2 = c[1:]
-    c1 = c1.upper()
-    if not 'A' <= c1 <= 'J':
-        print("Invalid coordinate")
-        continue
-    if not 1 <= int(c2) <= 10:
-        print("Invalid coordinate")
-        continue
+    print_my_board()
 
-    print("(" + c1 + ", " + str(c2) + ")")
+    match game_state:
 
-    result = process_defense(my_board, c1, c2)
-    print(result)
+        case GameState.GS_RUN_DEFENSE:
+            c = input("Enter coordinates [A1]-[J10]: ")
+            result = run_game_defense(c)
+            print(result)
+            game_state = GameState.GS_RUN_OFFENCE
 
-    c1, c2 = offence_guess(opponent_board)
+        case GameState.GS_RUN_OFFENCE:
+            c1, c2 = offence_guess(opponent_board)
+            c = c1 + c2
 
-    while True:
-        result = input(str(c1) + str(c2) + ": [HIT/MISS]? ")
-        result = result.upper()
+            while True:
+                result = run_game_offense(c)
+                result = result.upper()
 
-        if result == "MISS" or "HIT" in result:
-            offence_result(opponent_board, result)
-            print_board(opponent_board)
-            break
-        else:
-            print("Unknown response, please try again.")
+                if result == "M" or "H" in result:
+                    offence_result(opponent_board, result)
+                    break
+                else:
+                    print("Unknown response, please try again.")
+
+            print_opponent_board()            
+            game_state = GameState.GS_RUN_DEFENSE
+
+        case _:
+            print("I'M LOST!!!!")
+    
 
 
 

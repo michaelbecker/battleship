@@ -93,6 +93,17 @@ def _print_board_numbers_on_top(b):
 print_board = _print_board_numbers_on_top
 
 
+NUMBERS_ON_TOP = True
+LETTERS_ON_TOP = False
+
+
+def set_print_board(num_on_top):
+    if num_on_top:
+        print_board = _print_board_numbers_on_top
+    else:
+        print_board = _print_board_letters_on_top
+
+
 if __name__ == "__main__":
     print("Battleship print_board")
     b = []
