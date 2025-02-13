@@ -291,7 +291,12 @@ while True:
 
         case GameState.GS_RUN_DEFENSE:
             c = input("Enter coordinates [A1]-[J10]: ")
+
+            #
+            #   This will be called by the opponent computer.
+            #
             result = run_game_defense(c)
+            
             print(result)
             game_state = GameState.GS_RUN_OFFENCE
 
@@ -300,9 +305,12 @@ while True:
             c = c1 + c2
 
             while True:
+                #
+                #   We call this on the opponent computer.
+                #
                 result = run_game_offense(c)
-                result = result.upper()
 
+                result = result.upper()
                 if result == "M" or "H" in result:
                     offence_result(opponent_board, result)
                     break
