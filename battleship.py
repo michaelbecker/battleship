@@ -22,6 +22,7 @@
 import argparse
 import sys
 import random
+import socket
 from constants import *
 from print_board import (print_board, set_print_board, NUMBERS_ON_TOP,
                          LETTERS_ON_TOP)
@@ -187,7 +188,7 @@ def offence_result(b, result):
         b[row][col] = HIT
     else:
         print("UNKNOWN RESULT!")
-        
+
 
 def run_game_defense(coordinates):
     c1 = coordinates[0:1]
@@ -207,9 +208,20 @@ def run_game_defense(coordinates):
     return result
 
 
-def run_game_offense(coordinates):
-    result = input(str(c1) + str(c2) + ": [H/M]? ")
+def run_game_offense(c1, c2):
+    try:
+        result = input(str(c1) + str(c2) + ": [H/M]? ")
+    except:
+        print("\nExiting game")
+        sys.exit(-1)
     return result
+
+
+class GameState:
+    GS_RUN_OFFENCE = 1
+    GS_RUN_DEFENSE = 2
+
+game_state = GameState.GS_RUN_OFFENCE
 
 
 ################################ MAIN SCRIPT ################################
@@ -229,7 +241,7 @@ def print_my_board():
 def print_opponent_board():
     if args.verbose:
         print("Opponent Board")
-        print_board(opponent_board)            
+        print_board(opponent_board)
 
 
 def check_args():
@@ -255,9 +267,137 @@ def check_args():
         set_print_board(NUMBERS_ON_TOP)
 
 
+
+def run_local_game():
+    """ """
+    global game_state
+
+    while True:
+
+        print_my_board()
+
+        match game_state:
+
+            case GameState.GS_RUN_DEFENSE:
+                try:
+                    c = input("Enter coordinates [A1]-[J10]: ")
+                except:
+                    print("\nExiting game")
+                    sys.exit(-1)
+
+                #
+                #   This will be called by the opponent computer.
+                #
+                result = run_game_defense(c)
+
+                print(result)
+                game_state = GameState.GS_RUN_OFFENCE
+
+            case GameState.GS_RUN_OFFENCE:
+                c1, c2 = offence_guess(opponent_board)
+
+                while True:
+                    #
+                    #   We call this on the opponent computer.
+                    #
+                    try:
+                        result = input(str(c1) + str(c2) + ": [H/M]? ")
+                    except:
+                        print("\nExiting game")
+                        sys.exit(-1)
+
+                    result = result.upper()
+                    if result == "M" or "H" in result:
+                        offence_result(opponent_board, result)
+                        break
+                    else:
+                        print("Unknown response, please try again.")
+
+                print_opponent_board()
+                game_state = GameState.GS_RUN_DEFENSE
+
+            case _:
+                print("I'M LOST!!!!")
+
+
+def run_network_game():
+    """ """
+    global game_state
+
+    if game_state == GameState.GS_RUN_DEFENSE:
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind((args.ip, 50500))
+
+        print("DEBUG - listen() - ", socket.gethostname())
+        server.listen()
+
+        print("DEBUG - accept()")
+        (client, address) = server.accept()
+        print("DEBUG - accept() RETURNED")
+    else:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((args.ip, 50500))
+
+    while True:
+
+        print_my_board()
+
+        match game_state:
+
+            case GameState.GS_RUN_DEFENSE:
+                try:
+                    #c = input("Enter coordinates [A1]-[J10]: ")
+                    c = client.recv()
+                except:
+                    print("\nExiting game")
+                    sys.exit(-1)
+
+                #
+                #   This will be called by the opponent computer.
+                #
+                result = run_game_defense(c)
+
+                #print(result)
+                client.send(result)
+                game_state = GameState.GS_RUN_OFFENCE
+
+            case GameState.GS_RUN_OFFENCE:
+                c1, c2 = offence_guess(opponent_board)
+
+                while True:
+                    #
+                    #   We call this on the opponent computer.
+                    #
+                    try:
+                        #result = input(str(c1) + str(c2) + ": [H/M]? ")
+                        result = client.recv()
+                    except:
+                        print("\nExiting game")
+                        sys.exit(-1)
+
+                    result = result.upper()
+                    if result == "M" or "H" in result:
+                        offence_result(opponent_board, result)
+                        break
+                    else:
+                        print("Unknown response, please try again.")
+
+                print_opponent_board()
+                game_state = GameState.GS_RUN_DEFENSE
+
+            case _:
+                print("I'M LOST!!!!")
+
+
+
 # Use the python library tools to get our inputs.
 parser = argparse.ArgumentParser()
 parser.add_argument("player")
+parser.add_argument("--network",
+                    help="If present, this is a network game.",
+                    action="store_true")
+parser.add_argument("--ip",
+                    help="IP address if we are running a network game.")
 parser.add_argument("--letters-on-top",
                     help="Swaps labeling of rows and columns",
                     action="store_true")
@@ -273,9 +413,6 @@ print("")
 
 place_all_ships(my_board)
 
-class GameState:
-    GS_RUN_OFFENCE = 1
-    GS_RUN_DEFENSE = 2
 
 if player == PLAYER1:
     game_state = GameState.GS_RUN_OFFENCE
@@ -283,46 +420,13 @@ else:
     game_state = GameState.GS_RUN_DEFENSE
 
 
-while True:
+if args.network:
+    run_network_game()
+else:
+    run_local_game()
 
-    print_my_board()
 
-    match game_state:
 
-        case GameState.GS_RUN_DEFENSE:
-            c = input("Enter coordinates [A1]-[J10]: ")
-
-            #
-            #   This will be called by the opponent computer.
-            #
-            result = run_game_defense(c)
-            
-            print(result)
-            game_state = GameState.GS_RUN_OFFENCE
-
-        case GameState.GS_RUN_OFFENCE:
-            c1, c2 = offence_guess(opponent_board)
-            c = c1 + c2
-
-            while True:
-                #
-                #   We call this on the opponent computer.
-                #
-                result = run_game_offense(c)
-
-                result = result.upper()
-                if result == "M" or "H" in result:
-                    offence_result(opponent_board, result)
-                    break
-                else:
-                    print("Unknown response, please try again.")
-
-            print_opponent_board()            
-            game_state = GameState.GS_RUN_DEFENSE
-
-        case _:
-            print("I'M LOST!!!!")
-    
 
 
 
