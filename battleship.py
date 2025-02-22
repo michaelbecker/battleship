@@ -23,6 +23,7 @@ import argparse
 import sys
 import random
 import socket
+import logging
 from constants import *
 from print_board import (print_board, set_print_board, NUMBERS_ON_TOP,
                          LETTERS_ON_TOP)
@@ -221,16 +222,6 @@ class GameState:
     GS_RUN_OFFENCE = 1
     GS_RUN_DEFENSE = 2
 
-game_state = GameState.GS_RUN_OFFENCE
-
-
-################################ MAIN SCRIPT ################################
-
-# Actually "make" the boards we will use.
-my_board = build_board()
-opponent_board = build_board()
-player = "unknown"
-
 
 def print_my_board():
     if args.verbose:
@@ -250,6 +241,9 @@ def check_args():
     # the global keyword lets us change a global var.
     global player
     global print_board
+    global args
+    global logger
+    global port
 
     args.player = args.player.upper()
 
@@ -261,11 +255,23 @@ def check_args():
         print("Unknown player")
         sys.exit(-1)
 
+    if args.port:
+        port = int(args.port)
+
     if args.letters_on_top:
         set_print_board(LETTERS_ON_TOP)
     else:
         set_print_board(NUMBERS_ON_TOP)
 
+    if args.log_level:
+        args.log_level = args.log_level.upper()
+        args.numeric_level = getattr(logging, args.log_level, None)
+        if not isinstance(args.numeric_level, int):
+            print('Invalid log level: ', args.log_level)
+            sys.exit(-1)
+        logging.basicConfig(level=args.numeric_level)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
 
 def run_local_game():
@@ -319,6 +325,8 @@ def run_local_game():
             case _:
                 print("I'M LOST!!!!")
 
+port = 50500
+
 
 def run_network_game():
     """ """
@@ -326,17 +334,17 @@ def run_network_game():
 
     if game_state == GameState.GS_RUN_DEFENSE:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind((args.ip, 50500))
+        server.bind((args.ip, port))
 
-        print("DEBUG - listen() - ", socket.gethostname())
+        logger.debug("listen() - ", socket.gethostname())
         server.listen()
 
-        print("DEBUG - accept()")
+        logger.debug("accept()")
         (client, address) = server.accept()
-        print("DEBUG - accept() RETURNED")
+        logger.debug("accept() RETURNED")
     else:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((args.ip, 50500))
+        client.connect((args.ip, port))
 
     while True:
 
@@ -347,8 +355,9 @@ def run_network_game():
             case GameState.GS_RUN_DEFENSE:
                 try:
                     #c = input("Enter coordinates [A1]-[J10]: ")
-                    c = client.recv()
-                except:
+                    c = client.recv(3)
+                except Exception as e:
+                    logger.debug(e)
                     print("\nExiting game")
                     sys.exit(-1)
 
@@ -370,8 +379,9 @@ def run_network_game():
                     #
                     try:
                         #result = input(str(c1) + str(c2) + ": [H/M]? ")
-                        result = client.recv()
-                    except:
+                        result = client.recv(1)
+                    except Exception as e:
+                        logger.debug(e)
                         print("\nExiting game")
                         sys.exit(-1)
 
@@ -389,6 +399,13 @@ def run_network_game():
                 print("I'M LOST!!!!")
 
 
+################################ MAIN SCRIPT ################################
+
+# Actually "make" the boards we will use.
+my_board = build_board()
+opponent_board = build_board()
+player = "unknown"
+game_state = GameState.GS_RUN_OFFENCE
 
 # Use the python library tools to get our inputs.
 parser = argparse.ArgumentParser()
@@ -404,9 +421,19 @@ parser.add_argument("--letters-on-top",
 parser.add_argument("--verbose",
                     help="Enable verbose mode",
                     action="store_true")
+parser.add_argument("--port",
+                    help="Set port, default is 50500")
+parser.add_argument("--log-level",
+                    help="DEBUG|INFO|WARNING|ERROR")
+
+# Get the arguments from the command line.
 args = parser.parse_args()
 
+# Check the arguments to make sure they are valid.
 check_args()
+
+# Set up the logger, a lot of setup is done in check_args()
+logger = logging.getLogger(__name__)
 
 print("Computer is", player)
 print("")
