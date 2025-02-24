@@ -329,74 +329,99 @@ port = 50500
 
 
 def run_network_game():
-    """ """
+    """ This is the main loop for the network game. """
     global game_state
 
+    #
+    #   If we are player 2, we will be the server.
+    #
     if game_state == GameState.GS_RUN_DEFENSE:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((args.ip, port))
 
-        logger.debug("listen() - ", socket.gethostname())
+        logger.debug("listen() - %s", socket.gethostname())
         server.listen()
 
         logger.debug("accept()")
         (client, address) = server.accept()
         logger.debug("accept() RETURNED")
+    #
+    #   Else we are player 1 and we will be the client.
+    #
     else:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect((args.ip, port))
 
+    #
+    #   Main loop for the network game.
+    #
     while True:
 
         print_my_board()
 
+        logger.debug("Game State: %d", game_state)
         match game_state:
 
             case GameState.GS_RUN_DEFENSE:
                 try:
-                    #c = input("Enter coordinates [A1]-[J10]: ")
-                    c = client.recv(3)
+                    #
+                    #   If we are in the defense phase, we need to read the coordinates
+                    #   from our opponent
+                    #
+                    c = client.recv(3).decode("utf-8")
+                    logger.debug("Received: %s", c)
                 except Exception as e:
-                    logger.debug(e)
+                    logger.debug("Exception!", exec_info=True)
                     print("\nExiting game")
                     sys.exit(-1)
 
-                #
-                #   This will be called by the opponent computer.
-                #
                 result = run_game_defense(c)
 
-                #print(result)
-                client.send(result)
+                logger.debug("Sending: %s", result)
+                client.send(result.encode("utf-8"))
+
+                #
+                #   We switch to Offense now.
+                #
                 game_state = GameState.GS_RUN_OFFENCE
 
             case GameState.GS_RUN_OFFENCE:
                 c1, c2 = offence_guess(opponent_board)
+                c = c1 + c2
+                logger.debug("Sending: %s", c)
 
-                while True:
-                    #
-                    #   We call this on the opponent computer.
-                    #
-                    try:
-                        #result = input(str(c1) + str(c2) + ": [H/M]? ")
-                        result = client.recv(1)
-                    except Exception as e:
-                        logger.debug(e)
-                        print("\nExiting game")
-                        sys.exit(-1)
+                #
+                #   We call this on the opponent computer.
+                #
+                try:
+                    client.send(c.encode("utf-8"))
+                    result = client.recv(1)
+                    result = result.decode("utf-8")
+                    logger.debug("Received: %s", result)
+                except Exception as e:
+                    logger.debug("Exception!", exec_info=True)
+                    print("\nExiting game")
+                    sys.exit(-1)
 
-                    result = result.upper()
-                    if result == "M" or "H" in result:
-                        offence_result(opponent_board, result)
-                        break
-                    else:
-                        print("Unknown response, please try again.")
+                result = result.upper()
+                if result == "M" or "H" in result:
+                    offence_result(opponent_board, result)
+                    break
+                else:
+                    print("Unknown response!")
+                    sys.exit(-1)
 
                 print_opponent_board()
+
+                #
+                #   We switch to Defense now.
+                #
                 game_state = GameState.GS_RUN_DEFENSE
 
             case _:
                 print("I'M LOST!!!!")
+                sys.exit(-1)
 
 
 ################################ MAIN SCRIPT ################################
