@@ -336,22 +336,22 @@ def run_network_game():
     #   If we are player 2, we will be the server.
     #
     if game_state == GameState.GS_RUN_DEFENSE:
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind((args.ip, port))
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((args.ip, port))
 
         logger.debug("listen() - %s", socket.gethostname())
-        server.listen()
+        server_socket.listen()
 
         logger.debug("accept()")
-        (client, address) = server.accept()
+        (client_socket, address) = server_socket.accept()
         logger.debug("accept() RETURNED")
     #
     #   Else we are player 1 and we will be the client.
     #
     else:
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((args.ip, port))
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((args.ip, port))
 
     #
     #   Main loop for the network game.
@@ -369,8 +369,9 @@ def run_network_game():
                     #   If we are in the defense phase, we need to read the coordinates
                     #   from our opponent
                     #
-                    c = client.recv(3).decode("utf-8")
+                    c = client_socket.recv(3).decode("utf-8")
                     logger.debug("Received: %s", c)
+
                 except Exception as e:
                     logger.debug("Exception!", exec_info=True)
                     print("\nExiting game")
@@ -379,7 +380,7 @@ def run_network_game():
                 result = run_game_defense(c)
 
                 logger.debug("Sending: %s", result)
-                client.send(result.encode("utf-8"))
+                client_socket.send(result.encode("utf-8"))
 
                 #
                 #   We switch to Offense now.
@@ -395,8 +396,8 @@ def run_network_game():
                 #   We call this on the opponent computer.
                 #
                 try:
-                    client.send(c.encode("utf-8"))
-                    result = client.recv(1)
+                    client_socket.send(c.encode("utf-8"))
+                    result = client_socket.recv(1)
                     result = result.decode("utf-8")
                     logger.debug("Received: %s", result)
                 except Exception as e:
@@ -407,9 +408,8 @@ def run_network_game():
                 result = result.upper()
                 if result == "M" or "H" in result:
                     offence_result(opponent_board, result)
-                    break
                 else:
-                    print("Unknown response!")
+                    print("Unknown response! " + result)
                     sys.exit(-1)
 
                 print_opponent_board()

@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "${command:pickArgs}"
+            ]
+        },
+        {
+            "name": "Python Debugger: P2 on Network",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "p2", "--log-level", "DEBUG", "--network", "--ip", "127.0.0.1", "--port", "8080", "--verbose"
+            ]
+        },
+        {
+            "name": "Python Debugger: P1 on Network",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "p1", "--log-level", "DEBUG", "--network", "--ip", "127.0.0.1", "--port", "8080", "--verbose"
+            ]
+        }
+    ]
+}
