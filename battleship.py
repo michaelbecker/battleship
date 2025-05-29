@@ -51,20 +51,20 @@ def is_sunk(b, ship):
     return True
 
 
-def get_binary_coordinates(c1, c2):
+def get_binary_coordinates(ui_row, ui_col):
     """ Translate from UI coordinates to internal coordinates."""
-    if not isinstance(c1, str):
+    if not isinstance(ui_row, str):
         sys.exit("get_binary_coordinates: c1 - Invalid type")
 
-    if not isinstance(c2, str):
+    if not isinstance(ui_col, str):
         sys.exit("get_binary_coordinates: c2 - Invalid type")
 
-    row = ord(c1) - ord("A")
-    col = int(c2) - 1
-    return row, col
+    binary_row = ord(ui_row) - ord("A")
+    binary_col = int(ui_col) - 1
+    return binary_row, binary_col
 
 
-def get_string_coordinates(c1, c2):
+def get_UI_coordinates(c1, c2):
     """ Translate from internal coordinates to UI coordinates."""
     if not isinstance(c1, int):
         sys.exit("get_string_coordinates: c1 - Invalid type")
@@ -77,8 +77,8 @@ def get_string_coordinates(c1, c2):
     return row, col
 
 
-def place_ship(b, ship):
-    """ Place all 5 ships on a board randomly. """
+def place_ship_randomly(b, ship):
+    """ Place a ship on a board randomly. """
 
     def _place_ship_horizontal(b, ship):
         """ Handle ships that lie horizontally """
@@ -117,40 +117,13 @@ def place_ship(b, ship):
             success = _place_ship_vertical(b, ship)
 
 
-def place_all_ships(b):
-    """ Place all the ships we have. """
-    place_ship(b, CARRIER);
-    place_ship(b, BATTLESHIP);
-    place_ship(b, CRUISER);
-    place_ship(b, SUBMARINE);
-    place_ship(b, DESTROYER);
-
-
-def process_defense(b, c1, c2):
-    """ Handle getting coordinates from our opponents."""
-    # Translate from UI coordinates to internal coordinates.
-    row, col = get_binary_coordinates(c1, c2)
-
-    if b[row][col] == " ":
-        b[row][col] = MISS
-        return "M"
-
-    elif b[row][col] == MISS:
-        print("Error - Dup request")
-        return "E"
-
-    elif b[row][col] == HIT:
-        print("Error - Dup request")
-        return "E"
-
-    else:
-        ship = b[row][col]
-        b[row][col] = HIT
-
-        if is_sunk(b, ship):
-            return ship
-        else:
-            return "H"
+def place_all_ships_randomly(b):
+    """ Place all 5 ships on a board randomly. """
+    place_ship_randomly(b, CARRIER);
+    place_ship_randomly(b, BATTLESHIP);
+    place_ship_randomly(b, CRUISER);
+    place_ship_randomly(b, SUBMARINE);
+    place_ship_randomly(b, DESTROYER);
 
 
 def build_board():
@@ -175,7 +148,7 @@ def offence_guess(b):
         col = 0
 
     offence_guess.guess = (row, col)
-    return get_string_coordinates(row, col)
+    return get_UI_coordinates(row, col)
 
 offence_guess.guess = (5, 5)
 
@@ -191,22 +164,49 @@ def offence_result(b, result):
         print("UNKNOWN RESULT!")
 
 
+def process_defense(b, ui_row, ui_col):
+    """ Handle getting coordinates from our opponents."""
+
+
 def run_game_defense(coordinates):
-    c1 = coordinates[0:1]
-    c2 = coordinates[1:]
-    c1 = c1.upper()
-    if not 'A' <= c1 <= 'J':
+    ui_row = coordinates[0:1]
+    ui_col = coordinates[1:]
+    ui_row = ui_row.upper()
+
+    if not 'A' <= ui_row <= 'J':
         print("Invalid letter coordinate")
         return "E"
-    if not 1 <= int(c2) <= 10:
+    
+    if not 1 <= int(ui_col) <= 10:
         print("Invalid number coordinate")
         return "E"
 
     if args.verbose:
-        print("(" + c1 + ", " + str(c2) + ")")
+        print("(" + ui_row + ", " + str(ui_col) + ")")
 
-    result = process_defense(my_board, c1, c2)
-    return result
+    # Translate from UI coordinates to internal coordinates.
+    row, col = get_binary_coordinates(ui_row, ui_col)
+
+    if my_board[row][col] == " ":
+        my_board[row][col] = MISS
+        return "M"
+
+    elif my_board[row][col] == MISS:
+        print("Error - Dup request")
+        return "E"
+
+    elif my_board[row][col] == HIT:
+        print("Error - Dup request")
+        return "E"
+
+    else:
+        ship = my_board[row][col]
+        my_board[row][col] = HIT
+
+        if is_sunk(my_board, ship):
+            return ship
+        else:
+            return "H"
 
 
 def run_game_offense(c1, c2):
@@ -463,7 +463,7 @@ logger = logging.getLogger(__name__)
 print("Computer is", player)
 print("")
 
-place_all_ships(my_board)
+place_all_ships_randomly(my_board)
 
 
 if player == PLAYER1:
